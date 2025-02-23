@@ -43,7 +43,7 @@ using PRoCon.Core.Players.Items;
 using PRoCon.Core.Battlemap;
 using PRoCon.Core.Maps;
 
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 
 namespace PRoConEvents {
 //Aliases
