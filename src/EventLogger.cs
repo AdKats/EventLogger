@@ -27,13 +27,8 @@ using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net;
-using System.Reflection;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Timers;
-using System.Web;
 
 using Dapper;
 
@@ -102,7 +97,6 @@ namespace PRoConEvents
         private enumBoolYesNo SettingProconLayerConsole;
         private enumBoolYesNo SettingProconLayerLogfile;
         private enumBoolYesNo SettingProconLayerDB;
-
 
         private List<String> tmpLogfile = new List<String>();
         private List<String> AdkatsBanCheckList = new List<String>();
@@ -215,7 +209,6 @@ namespace PRoConEvents
             this.SqlTableExist = false;
         }
 
-
         public enum MessageType { Warning, Error, Exception, Normal };
 
         public String FormatMessage(String msg, MessageType type)
@@ -309,7 +302,6 @@ On Say; Text !log; Exec procon.protected.plugins.call EventLogger SqlLog &quot;T
 <p></p>
 ";
         }
-
 
         public List<CPluginVariable> GetPluginVariables()
         {
@@ -834,7 +826,7 @@ On Say; Text !log; Exec procon.protected.plugins.call EventLogger SqlLog &quot;T
             }
         }
 
-        public void OnPunkbusterMessage(String strPunkbusterMessage)
+        public override void OnPunkbusterMessage(String strPunkbusterMessage)
         {
             return;
             String violation = @"PunkBuster Server: VIOLATION \(([a-zA-Z]+)\) \#([0-9]+)\: ([a-zA-Z0-9_\-]+) \(slot #([0-9]+)\) Violation \(([a-zA-Z]+)\) \#([0-9]+) \[([0-9a-f]{32})\(-\) (([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3}))\:([0-9]{1,5})\]";
@@ -1192,7 +1184,6 @@ On Say; Text !log; Exec procon.protected.plugins.call EventLogger SqlLog &quot;T
                 }
             }
 
-
             if (forceKilled)
             {
                 if ((this.SettingPlayerForceMovedByAdminChat == enumBoolYesNo.Yes) || (this.SettingPlayerForceMovedByAdminConsole == enumBoolYesNo.Yes) || (this.SettingPlayerForceMovedByAdminLogfile == enumBoolYesNo.Yes) || (this.SettingPlayerForceMovedByAdminDB == enumBoolYesNo.Yes))
@@ -1411,8 +1402,6 @@ On Say; Text !log; Exec procon.protected.plugins.call EventLogger SqlLog &quot;T
                 this.onJoinTime.Clear();
             }
         }
-
-
 
         public void CheckRestart()
         {
@@ -1734,7 +1723,6 @@ On Say; Text !log; Exec procon.protected.plugins.call EventLogger SqlLog &quot;T
             if (fullMessage.Length > 170) { fullMessage = fullMessage.Substring(0, 170); }
             return fullMessage;
         }
-
 
     }
 } // end namespace PRoConEvents
