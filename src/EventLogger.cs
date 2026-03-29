@@ -287,7 +287,7 @@ namespace PRoConEvents
 
         public String GetPluginAuthor()
         {
-            return "maxdralle";
+            return "maxdralle (maintained by Prophet731)";
         }
 
         public String GetPluginWebsite()
