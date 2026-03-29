@@ -890,39 +890,36 @@ On Say; Text !log; Exec procon.protected.plugins.call EventLogger SqlLog &quot;T
                                         {
                                             // check player
                                             tmp_eaguid = pguid;
-                                            SQL = "SELECT tpd.`SoldierName`, tpd.`EAGUID`, tpd.`PlayerID`, abr.`record_message`, TIMESTAMPDIFF(Minute,UTC_TIMESTAMP(),adk.`ban_endTime`) AS timestamp FROM `tbl_playerdata` tpd INNER JOIN `tbl_server_player` tsp ON tsp.`PlayerID` = tpd.`PlayerID` INNER JOIN `adkats_bans` adk ON adk.`player_id` = tpd.`PlayerID` LEFT JOIN `adkats_records_main` abr ON abr.`record_id` = adk.`latest_record_id` WHERE adk.`ban_status` = 'Active' AND tpd.`EAGUID` = '" + tmp_eaguid + "' GROUP BY tpd.`PlayerID` ORDER BY tpd.`SoldierName` ASC";
+                                            SQL = "SELECT tpd.`SoldierName`, tpd.`EAGUID`, tpd.`PlayerID`, abr.`record_message`, TIMESTAMPDIFF(Minute,UTC_TIMESTAMP(),adk.`ban_endTime`) AS timestamp FROM `tbl_playerdata` tpd INNER JOIN `tbl_server_player` tsp ON tsp.`PlayerID` = tpd.`PlayerID` INNER JOIN `adkats_bans` adk ON adk.`player_id` = tpd.`PlayerID` LEFT JOIN `adkats_records_main` abr ON abr.`record_id` = adk.`latest_record_id` WHERE adk.`ban_status` = 'Active' AND tpd.`EAGUID` = @EAGUID GROUP BY tpd.`PlayerID` ORDER BY tpd.`SoldierName` ASC";
                                             DebugWrite("[BanEnforceThread] Checking EA-GUID: " + pguid + ". SQL Cmd: " + SQL, 5);
-                                            using (MySqlCommand MyCommand = new MySqlCommand(SQL))
                                             {
-                                                DataTable resultTable = this.AdkatsSQLquery(MyCommand);
-                                                if (resultTable.Rows != null)
+                                                var results = Con.Query(SQL, new { EAGUID = tmp_eaguid });
+                                                foreach (var row in results)
                                                 {
-                                                    foreach (DataRow row in resultTable.Rows)
+                                                    // reading sql
+                                                    var rowDict = (IDictionary<String, Object>)row;
+                                                    tmp_time = Convert.ToInt32(rowDict["timestamp"]);
+                                                    tmp_banreason = rowDict["record_message"].ToString();
+                                                    tmp_playername = rowDict["SoldierName"].ToString();
+                                                }
+                                                if (((this.SettingEnableBanEnforcerOnlyPerma == enumBoolYesNo.Yes) && (tmp_time > 525600)) || (this.SettingEnableBanEnforcerOnlyPerma == enumBoolYesNo.No))
+                                                {
+                                                    if ((tmp_banreason.Length > 2) && (tmp_playername != String.Empty))
                                                     {
-                                                        // reading sql
-                                                        tmp_time = Convert.ToInt32(row["timestamp"]);
-                                                        tmp_banreason = row["record_message"].ToString();
-                                                        tmp_playername = row["SoldierName"].ToString();
-                                                    }
-                                                    if (((this.SettingEnableBanEnforcerOnlyPerma == enumBoolYesNo.Yes) && (tmp_time > 525600)) || (this.SettingEnableBanEnforcerOnlyPerma == enumBoolYesNo.No))
-                                                    {
-                                                        if ((tmp_banreason.Length > 2) && (tmp_playername != String.Empty))
-                                                        {
-                                                            // banned player found
-                                                            tmp_currentName = this.GuidToName(pguid);
-                                                            tmp_banreason = this.BanTimeString(tmp_time) + this.BanReasonCleaned(tmp_banreason, tmp_currentName);
-                                                            DebugWrite("[BanEnforceThread] Kick BANNED player (Adkats DB): ^b" + tmp_currentName + "^n: " + tmp_banreason, 2);
-                                                            if (!this.AdkatsBanned.ContainsKey(pguid) && (tmp_time > 5000)) { this.AdkatsBanned.Add(pguid, tmp_banreason); }
-                                                            if (this.AdkatsBanned.ContainsKey(pguid) && (tmp_time < 5000)) { this.AdkatsBanned.Remove(pguid); }
-                                                            this.ExecuteCommand("procon.protected.send", "admin.yell", tmp_banreason, "10", "player", tmp_currentName);
-                                                            this.ExecuteCommand("procon.protected.send", "admin.say", tmp_banreason, "player", tmp_currentName);
-                                                            this.ExecuteCommand("procon.protected.chat.write", "(PlayerYell " + tmp_currentName + ") " + tmp_banreason);
-                                                            //this.ExecuteCommand("procon.protected.send", "admin.kickPlayer", tmp_currentName, tmp_banreason);
-                                                            this.ExecuteCommand("procon.protected.tasks.add", "EventLogger", "15", "1", "1", "procon.protected.send", "admin.kickPlayer", tmp_currentName, tmp_banreason);
-                                                            this.ExecuteCommand("procon.protected.tasks.add", "EventLogger", "12", "1", "1", "procon.protected.send", "admin.yell", tmp_banreason, "10", "player", tmp_currentName);
-                                                            this.ExecuteCommand("procon.protected.tasks.add", "EventLogger", "12", "1", "1", "admin.say", tmp_banreason, "player", tmp_currentName);
-                                                            if (this.AdkatsBanChecked.ContainsKey(pguid)) { this.AdkatsBanChecked.Remove(pguid); }
-                                                        }
+                                                        // banned player found
+                                                        tmp_currentName = this.GuidToName(pguid);
+                                                        tmp_banreason = this.BanTimeString(tmp_time) + this.BanReasonCleaned(tmp_banreason, tmp_currentName);
+                                                        DebugWrite("[BanEnforceThread] Kick BANNED player (Adkats DB): ^b" + tmp_currentName + "^n: " + tmp_banreason, 2);
+                                                        if (!this.AdkatsBanned.ContainsKey(pguid) && (tmp_time > 5000)) { this.AdkatsBanned.Add(pguid, tmp_banreason); }
+                                                        if (this.AdkatsBanned.ContainsKey(pguid) && (tmp_time < 5000)) { this.AdkatsBanned.Remove(pguid); }
+                                                        this.ExecuteCommand("procon.protected.send", "admin.yell", tmp_banreason, "10", "player", tmp_currentName);
+                                                        this.ExecuteCommand("procon.protected.send", "admin.say", tmp_banreason, "player", tmp_currentName);
+                                                        this.ExecuteCommand("procon.protected.chat.write", "(PlayerYell " + tmp_currentName + ") " + tmp_banreason);
+                                                        //this.ExecuteCommand("procon.protected.send", "admin.kickPlayer", tmp_currentName, tmp_banreason);
+                                                        this.ExecuteCommand("procon.protected.tasks.add", "EventLogger", "15", "1", "1", "procon.protected.send", "admin.kickPlayer", tmp_currentName, tmp_banreason);
+                                                        this.ExecuteCommand("procon.protected.tasks.add", "EventLogger", "12", "1", "1", "procon.protected.send", "admin.yell", tmp_banreason, "10", "player", tmp_currentName);
+                                                        this.ExecuteCommand("procon.protected.tasks.add", "EventLogger", "12", "1", "1", "admin.say", tmp_banreason, "player", tmp_currentName);
+                                                        if (this.AdkatsBanChecked.ContainsKey(pguid)) { this.AdkatsBanChecked.Remove(pguid); }
                                                     }
                                                 }
                                             }
@@ -1427,7 +1424,7 @@ On Say; Text !log; Exec procon.protected.plugins.call EventLogger SqlLog &quot;T
         {
             if (!this.fIsEnabled) { return; }
             Boolean SqlConOK = false;
-            String SQL = "DELETE FROM `event_logger` WHERE (TIMESTAMPDIFF(DAY, timestamp, UTC_TIMESTAMP()) > " + this.SettingDBCleaner.ToString() + ")";
+            String SQL = "DELETE FROM `event_logger` WHERE (TIMESTAMPDIFF(DAY, timestamp, UTC_TIMESTAMP()) > @Days)";
             if (this.SettingSqlEnabled == enumBoolYesNo.Yes)
             {
                 this.TableBuilder();
@@ -1443,12 +1440,8 @@ On Say; Text !log; Exec procon.protected.plugins.call EventLogger SqlLog &quot;T
                                 if (Con.State == ConnectionState.Open)
                                 {
                                     DebugWrite("[AutoDBCleaner] delete old entries in SQL database. SQL COMMAND (MyCom): " + SQL, 4);
-                                    using (MySqlCommand MyCom = new MySqlCommand(SQL, Con))
-                                    {
-                                        MyCom.ExecuteNonQuery();
-                                        SqlConOK = true;
-                                        MyCom.Connection.Close();
-                                    }
+                                    Con.Execute(SQL, new { Days = this.SettingDBCleaner });
+                                    SqlConOK = true;
                                 }
                                 else
                                 {
@@ -1503,14 +1496,10 @@ On Say; Text !log; Exec procon.protected.plugins.call EventLogger SqlLog &quot;T
                             {
                                 if (Con.State == ConnectionState.Open)
                                 {
-                                    String SQL = "INSERT INTO `event_logger` (`gameserver`, `event`, `timestamp`, `playername`, `msg`) VALUES ('" + this.SettingStrSqlGameserver + "', '" + this.strSqlProtection(layerEvent) + "', UTC_TIMESTAMP() , '" + this.strSqlProtection(player) + "', '" + this.strSqlProtection(reason) + "')";
+                                    String SQL = "INSERT INTO `event_logger` (`gameserver`, `event`, `timestamp`, `playername`, `msg`) VALUES (@Gameserver, @Event, UTC_TIMESTAMP(), @Playername, @Msg)";
 
-                                    using (MySqlCommand MyCom = new MySqlCommand(SQL, Con))
-                                    {
-                                        MyCom.ExecuteNonQuery();
-                                        SqlConOK = true;
-                                        MyCom.Connection.Close();
-                                    }
+                                    Con.Execute(SQL, new { Gameserver = this.SettingStrSqlGameserver, Event = layerEvent, Playername = player, Msg = reason });
+                                    SqlConOK = true;
                                 }
                                 else
                                 {
@@ -1568,28 +1557,21 @@ On Say; Text !log; Exec procon.protected.plugins.call EventLogger SqlLog &quot;T
                                     try
                                     {
                                         // check if table exist in SQL database
-                                        String SQL = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='event_logger' AND table_schema='" + this.SettingStrSqlDatabase + "'";
+                                        String SQL = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='event_logger' AND table_schema=@Schema";
                                         DebugWrite("[SQL-TableBuilder] [CheckExist] Connected to SQL. Check if table exist or not in SQL database. SQL COMMAND (MyCommand): " + SQL, 5);
-                                        using (MySqlCommand MyCommand = new MySqlCommand(SQL))
                                         {
-                                            DataTable resultTable = this.SQLquery(MyCommand);
-                                            if (resultTable.Rows != null)
+                                            var results = Con.Query(SQL, new { Schema = this.SettingStrSqlDatabase });
+                                            DebugWrite("[SQL-TableBuilder] [CheckExist] Receive informations from SQL", 5);
+                                            foreach (var row in results)
                                             {
-                                                DebugWrite("[SQL-TableBuilder] [CheckExist] Receive informations from SQL", 5);
-                                                foreach (DataRow row in resultTable.Rows)
+                                                // reading sql
+                                                var rowDict = (IDictionary<String, Object>)row;
+                                                if (rowDict["COLUMN_NAME"].ToString() == "gameserver")
                                                 {
-                                                    // reading sql
-                                                    if (row["COLUMN_NAME"].ToString() == "gameserver")
-                                                    {
-                                                        // yes, table 'event_logger' exist in SQL DB!!
-                                                        DebugWrite("[SQL-TableBuilder] [CheckExist] Table 'event_logger' exist in SQL database", 5);
-                                                        TableExist = true;
-                                                    }
+                                                    // yes, table 'event_logger' exist in SQL DB!!
+                                                    DebugWrite("[SQL-TableBuilder] [CheckExist] Table 'event_logger' exist in SQL database", 5);
+                                                    TableExist = true;
                                                 }
-                                            }
-                                            else
-                                            {
-                                                ConsoleError("[SQL-TableBuilder] [CheckExist] Table 'event_logger' NOT exist on your SQL Server");
                                             }
                                         }
                                     }
@@ -1613,10 +1595,8 @@ On Say; Text !log; Exec procon.protected.plugins.call EventLogger SqlLog &quot;T
                                                 SqlTableBuild = "CREATE TABLE IF NOT EXISTS `event_logger` (`ID` INT NOT NULL AUTO_INCREMENT ,`gameserver` varchar(30) NOT NULL, `event` varchar(30) NOT NULL, `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, `playername` varchar(35) NULL DEFAULT NULL, `msg` varchar(400) NULL DEFAULT NULL,PRIMARY KEY (`ID`))ENGINE = InnoDB";
                                                 ConsoleWrite("[SQL-TableBuilder] [CreateTable] Plugin create NEW table 'event_logger' SQL database");
                                                 DebugWrite("^b[SQL-TableBuilder] [CreateTable] Connected to SQL.^n SQL COMMAND (MyCom): " + SqlTableBuild, 4);
-                                                using (MySqlCommand MyCom = new MySqlCommand(SqlTableBuild, Con))
                                                 {
-                                                    MyCom.ExecuteNonQuery();
-                                                    MyCom.Connection.Close();
+                                                    Con.Execute(SqlTableBuild);
                                                     TableCreated = true;
                                                 }
                                             }
@@ -1667,118 +1647,6 @@ On Say; Text !log; Exec procon.protected.plugins.call EventLogger SqlLog &quot;T
             }
         }
 
-        // sql zeugs main
-        private DataTable SQLquery(MySqlCommand selectQuery)
-        {
-            DataTable MyDataTable = new DataTable();
-            try
-            {
-                if (selectQuery == null)
-                {
-                    ConsoleWrite("SQLquery: selectQuery is null");
-                    return MyDataTable;
-                }
-                else if (selectQuery.CommandText.Equals(String.Empty) == true)
-                {
-                    DebugWrite("[SQLquery] CommandText is empty", 4);
-                    return MyDataTable;
-                }
-
-                try
-                {
-                    using (MySqlConnection Connection = new MySqlConnection(this.SqlLogin()))
-                    {
-                        selectQuery.Connection = Connection;
-                        using (MySqlDataAdapter MyAdapter = new MySqlDataAdapter(selectQuery))
-                        {
-                            if (MyAdapter != null)
-                            {
-                                MyAdapter.Fill(MyDataTable);
-                            }
-                            else
-                            {
-                                DebugWrite("[SQLquery] MyAdapter is null", 4);
-                            }
-                        }
-                        Connection.Close();
-                    }
-                }
-                catch (MySqlException me)
-                {
-                    ConsoleError("[SQLquery] Error in SQL.");
-                    this.DisplayMySqlErrorCollection(me);
-                    this.SqlTableExist = false;
-                }
-                catch (Exception c)
-                {
-                    ConsoleError("[SQLquery] Error in SQL Query: " + c);
-                    this.SqlTableExist = false;
-                }
-            }
-            catch (Exception c)
-            {
-                ConsoleError("[SQLquery] SQLQuery OuterException: " + c);
-                this.SqlTableExist = false;
-            }
-            return MyDataTable;
-        }
-
-        // sql zeugs main 2
-        private DataTable AdkatsSQLquery(MySqlCommand selectQuery)
-        {
-            DataTable MyDataTable = new DataTable();
-            try
-            {
-                if (selectQuery == null)
-                {
-                    ConsoleWrite("SQLquery: selectQuery is null");
-                    return MyDataTable;
-                }
-                else if (selectQuery.CommandText.Equals(String.Empty) == true)
-                {
-                    DebugWrite("[SQLquery] CommandText is empty", 4);
-                    return MyDataTable;
-                }
-
-                try
-                {
-                    using (MySqlConnection Connection = new MySqlConnection(this.AdkatsSqlLogin()))
-                    {
-                        selectQuery.Connection = Connection;
-                        using (MySqlDataAdapter MyAdapter = new MySqlDataAdapter(selectQuery))
-                        {
-                            if (MyAdapter != null)
-                            {
-                                MyAdapter.Fill(MyDataTable);
-                            }
-                            else
-                            {
-                                DebugWrite("[SQLquery] MyAdapter is null", 4);
-                            }
-                        }
-                        Connection.Close();
-                    }
-                }
-                catch (MySqlException me)
-                {
-                    ConsoleError("[SQLquery] Error in SQL.");
-                    this.DisplayMySqlErrorCollection(me);
-                    this.SqlTableExist = false;
-                }
-                catch (Exception c)
-                {
-                    ConsoleError("[SQLquery] Error in SQL Query: " + c);
-                    this.SqlTableExist = false;
-                }
-            }
-            catch (Exception c)
-            {
-                ConsoleError("[SQLquery] SQLQuery OuterException: " + c);
-                this.SqlTableExist = false;
-            }
-            return MyDataTable;
-        }
-
         public void DisplayMySqlErrorCollection(MySqlException myException)
         {
             this.ExecuteCommand("procon.protected.pluginconsole.write", "^1Message: " + myException.Message + "^0");
@@ -1814,8 +1682,6 @@ On Say; Text !log; Exec procon.protected.plugins.call EventLogger SqlLog &quot;T
         private String SqlLogin() { return "Server=" + this.SettingStrSqlHostname + ";" + "Port=" + this.SettingStrSqlPort + ";" + "Database=" + this.SettingStrSqlDatabase + ";" + "Uid=" + this.SettingStrSqlUsername + ";" + "Pwd=" + this.SettingStrSqlPassword + ";" + "Connection Timeout=5;"; }
 
         private String AdkatsSqlLogin() { return "Server=" + this.SettingAdkatsDBIP + ";" + "Port=" + this.SettingStrSqlPort + ";" + "Database=" + this.SettingAdkatsDBName + ";" + "Uid=" + this.SettingAdkatsDBUser + ";" + "Pwd=" + this.SettingAdkatsDBPw + ";" + "Connection Timeout=5;"; }
-
-        private String strSqlProtection(String StrInp) { return StrInp.Replace("\\0", "").Replace("\\b", "").Replace("\\0", "").Replace("\\n", "").Replace("\\r", "").Replace("\\t", "").Replace("\\Z", "").Replace("\"", "").Replace(";", "").Replace("{", "").Replace("}", "").Replace("'", "").Replace("’", "").Replace("‘", ""); }
 
         private String BanTimeString(Int32 Minutes)
         {
